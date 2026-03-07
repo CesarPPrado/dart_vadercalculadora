@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:audioplayers/audioplayers.dart'; // Importamos el paquete de audio
 import '../models/calculator_model.dart';
 
-/// Página principal de la calculadora
 class CalculatorPage extends StatefulWidget {
   const CalculatorPage({super.key});
 
@@ -15,8 +15,10 @@ class _CalculatorPageState extends State<CalculatorPage> {
   final TextEditingController _numero2Controller = TextEditingController();
   String _resultado = '0';
   
-  // ¡El interruptor del Lado Oscuro!
   bool _isDartVaderMode = false; 
+  
+  // Instancia del reproductor de audio
+  final AudioPlayer _audioPlayer = AudioPlayer();
 
   void _realizarOperacion(String operacion) {
     try {
@@ -53,9 +55,23 @@ class _CalculatorPageState extends State<CalculatorPage> {
     });
   }
 
+  // Método para manejar el cambio al Lado Oscuro
+  void _toggleDartVaderMode() async {
+    setState(() {
+      _isDartVaderMode = !_isDartVaderMode;
+    });
+
+    if (_isDartVaderMode) {
+      // Reproduce la marcha imperial (asegúrate de que el nombre coincida con tu archivo)
+      await _audioPlayer.play(AssetSource('marcha.mp3'));
+    } else {
+      // Detiene la música si regresamos al lado luminoso
+      await _audioPlayer.stop();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    // Definimos los colores dependiendo de si el modo Dart Vader está activo
     final Color bgColor = _isDartVaderMode ? Colors.black : Theme.of(context).scaffoldBackgroundColor;
     final Color textColor = _isDartVaderMode ? Colors.redAccent : Colors.black87;
     final Color appBarColor = _isDartVaderMode ? const Color(0xFF111111) : Theme.of(context).colorScheme.inversePrimary;
@@ -71,14 +87,9 @@ class _CalculatorPageState extends State<CalculatorPage> {
         backgroundColor: appBarColor,
         iconTheme: IconThemeData(color: appBarTextColor),
         actions: [
-          // Botón para cambiar al Lado Oscuro
           IconButton(
             icon: Icon(_isDartVaderMode ? Icons.light_mode : Icons.dark_mode),
-            onPressed: () {
-              setState(() {
-                _isDartVaderMode = !_isDartVaderMode;
-              });
-            },
+            onPressed: _toggleDartVaderMode,
             tooltip: 'Cambiar lado de la Fuerza',
           ),
           IconButton(
@@ -88,32 +99,49 @@ class _CalculatorPageState extends State<CalculatorPage> {
           ),
         ],
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
-        child: Theme(
-          // Forzamos el tema de los inputs dependiendo del modo
-          data: Theme.of(context).copyWith(
-            inputDecorationTheme: InputDecorationTheme(
-              labelStyle: TextStyle(color: textColor),
-              enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: textColor.withValues(alpha: 0.5))),
-              focusedBorder: OutlineInputBorder(borderSide: BorderSide(color: textColor, width: 2)),
-              prefixIconColor: textColor,
+      // Usamos un Stack para poner la imagen de fondo por debajo de todo el contenido
+      body: Stack(
+        children: [
+          // Imagen de fondo (Solo aparece en modo Dart Vader)
+          if (_isDartVaderMode)
+            Positioned.fill(
+              child: Opacity(
+                opacity: 0.2, // Baja opacidad para que parezca marca de agua
+                child: Image.asset(
+                  'assets/vader.png',
+                  fit: BoxFit.cover, // Ajusta la imagen a toda la pantalla
+                ),
+              ),
             ),
-            textTheme: TextTheme(bodyLarge: TextStyle(color: textColor)),
+            
+          // Contenido principal de la calculadora
+          SingleChildScrollView(
+            padding: const EdgeInsets.all(16.0),
+            child: Theme(
+              data: Theme.of(context).copyWith(
+                inputDecorationTheme: InputDecorationTheme(
+                  labelStyle: TextStyle(color: textColor),
+                  enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: textColor.withValues(alpha: 0.5))),
+                  focusedBorder: OutlineInputBorder(borderSide: BorderSide(color: textColor, width: 2)),
+                  prefixIconColor: textColor,
+                ),
+                textTheme: TextTheme(bodyLarge: TextStyle(color: textColor)),
+              ),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  _buildTextField(controller: _numero1Controller, label: 'Número 1 (Base / Valor único)', textColor: textColor),
+                  const SizedBox(height: 16),
+                  _buildTextField(controller: _numero2Controller, label: 'Número 2 (Exponente / Secundario)', textColor: textColor),
+                  const SizedBox(height: 32),
+                  _buildResultado(textColor),
+                  const SizedBox(height: 32),
+                  _buildBotonesOperaciones(textColor),
+                ],
+              ),
+            ),
           ),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              _buildTextField(controller: _numero1Controller, label: 'Número 1 (Base / Valor único)', textColor: textColor),
-              const SizedBox(height: 16),
-              _buildTextField(controller: _numero2Controller, label: 'Número 2 (Exponente / Secundario)', textColor: textColor),
-              const SizedBox(height: 32),
-              _buildResultado(textColor),
-              const SizedBox(height: 32),
-              _buildBotonesOperaciones(textColor),
-            ],
-          ),
-        ),
+        ],
       ),
     );
   }
@@ -135,24 +163,18 @@ class _CalculatorPageState extends State<CalculatorPage> {
       padding: const EdgeInsets.all(16),
       width: double.infinity,
       decoration: BoxDecoration(
-        color: _isDartVaderMode ? Colors.grey[900] : Theme.of(context).colorScheme.primaryContainer,
+        color: _isDartVaderMode ? Colors.transparent : Theme.of(context).colorScheme.primaryContainer,
         borderRadius: BorderRadius.circular(12),
         border: _isDartVaderMode ? Border.all(color: Colors.redAccent, width: 2) : null,
       ),
       child: Column(
         children: [
-          Text(
-            'Resultado',
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(color: textColor),
-          ),
+          Text('Resultado', style: Theme.of(context).textTheme.titleMedium?.copyWith(color: textColor)),
           const SizedBox(height: 8),
           Text(
             _resultado,
             textAlign: TextAlign.center,
-            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-              color: textColor,
-              fontWeight: FontWeight.bold,
-            ),
+            style: Theme.of(context).textTheme.headlineSmall?.copyWith(color: textColor, fontWeight: FontWeight.bold),
           ),
         ],
       ),
@@ -160,10 +182,9 @@ class _CalculatorPageState extends State<CalculatorPage> {
   }
 
   Widget _buildBotonesOperaciones(Color textColor) {
-    // Estilo especial para los botones si somos Sith
     final ButtonStyle btnStyle = _isDartVaderMode 
       ? ElevatedButton.styleFrom(
-          backgroundColor: Colors.black,
+          backgroundColor: Colors.black.withValues(alpha: 0.7), // Botones un poco transparentes para ver el fondo
           foregroundColor: Colors.redAccent,
           side: const BorderSide(color: Colors.redAccent),
           padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
@@ -224,6 +245,7 @@ class _CalculatorPageState extends State<CalculatorPage> {
   void dispose() {
     _numero1Controller.dispose();
     _numero2Controller.dispose();
+    _audioPlayer.dispose(); // Importante liberar el reproductor
     super.dispose();
   }
 }
